@@ -1,6 +1,6 @@
 # Bro CLI
 
-Personal AI assistant untuk terminal. Gratis, instant, dan mudah digunakan.
+Personal AI assistant for your terminal. Free, instant, and easy to use.
 
 ## Install
 
@@ -15,38 +15,38 @@ source ~/.bashrc
 ## Setup
 
 ```bash
-# Setup API Key
+# Get free API key at https://openrouter.ai
 echo 'export OPENROUTER_API_KEY="sk-or-v1-xxxxx"' >> ~/.bashrc
-source ~/.bash# Dapatkan gratis di https://openrouter.ai
+source ~/.bashrc
 ```
 
-## Penggunaan
+## Usage
 
 ```bash
-bro "halo"
+bro "hello"
 
-bro -m              # Pilih model
-bro -r file.txt     # Baca & proses file
-bro --stats         # Lihat usage
+bro -m              # Select model
+bro -r file.txt     # Read & process file
+bro --stats         # View usage stats
 
-echo "pertanyaan" | bro  # Pipe support
+echo "question" | bro  # Pipe support
 bro --stream        # Streaming response
 ```
 
 ## Commands
 
-| Command | Fungsi |
-|---------|--------|
-| `bro "text"` | Chat biasa |
-| `-m` | Ganti model |
-| `-n` | Chat baru |
-| `-y` | Lihat riwayat |
-| `-c` | Hapus riwayat |
-| `-r <file>` | Baca file |
-| `-w <file> <isi>` | Tulis file |
-| `--config` | Lihat config |
-| `--theme light/dark` | Ganti tema |
-| `--stats` | Statistik usage |
+| Command | Description |
+|---------|-------------|
+| `bro "text"` | Regular chat |
+| `-m` | Change model |
+| `-n` | New chat |
+| `-y` | View history |
+| `-c` | Clear history |
+| `-r <file>` | Read file |
+| `-w <file> <content>` | Write file |
+| `--config` | Show config |
+| `--theme light/dark` | Change theme |
+| `--stats` | Usage stats |
 | `--export <file>` | Export chat |
 | `--import <file>` | Import chat |
 | `--help` | Help |
@@ -66,6 +66,6 @@ bro --stream        # Streaming response
 rm ~/.local/bin/bro ~/.config/bro -rf
 ```
 
-## Lisensi
+## License
 
 MIT
