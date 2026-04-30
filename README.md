@@ -65,7 +65,3 @@ bro --stream        # Streaming response
 ```bash
 rm ~/.local/bin/bro ~/.config/bro -rf
 ```
-
-## License
-
-MIT
