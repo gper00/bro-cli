@@ -109,13 +109,15 @@ function userBubble(text) {
     p(`\n  ${BROWN}${BOLD}👤 Kamu${R}`);
 }
 
+const PAD = '  ';  // 2 spaces padding
+
 function aiBubble(text) {
     const w = tw();
-    const maxC = Math.max(w - 4, 50);
+    const maxC = Math.max(w - 8, 46);
     
     const lines = parseMarkdown(text, maxC, true);
     
-    p(`\n${TEAL}✦ Bro${R}\n`);
+    p(`\n${PAD}${TEAL}✦ Bro${R}\n`);
     
     let inCode = false;
     let prevEmpty = true;
@@ -125,7 +127,7 @@ function aiBubble(text) {
             if (!inCode) {
                 inCode = true;
                 const lang = line.slice(3).trim() || 'code';
-                p(`${DGRAY}▼ ${lang}${R}`);
+                p(`${PAD}${DGRAY}▼ ${lang}${R}`);
             } else {
                 inCode = false;
                 prevEmpty = true;
@@ -134,7 +136,7 @@ function aiBubble(text) {
         }
         
         if (inCode) {
-            p(`${OCHRE}${line}${R}`);
+            p(`${PAD}${OCHRE}${line}${R}`);
             return;
         }
         
@@ -143,7 +145,7 @@ function aiBubble(text) {
         }
         
         if (line.trim()) {
-            p(`${INK}${line}${R}`);
+            p(`${PAD}${INK}${line}${R}`);
             prevEmpty = false;
         }
     });
@@ -230,10 +232,11 @@ function showSpinner(pid) {
     const interval = setInterval(() => {
         if (process.kill(pid, 0)) {
             dots = (dots + 1) % 4;
-            process.stdout.write(`\r${TEAL}bro lagi mikir${'.'.repeat(dots)}`);
+            process.stdout.write(`\r${PAD}${TEAL}bro lagi mikir${'.'.repeat(dots)}`);
         } else {
             clearInterval(interval);
             process.stdout.write('\r' + ' '.repeat(20) + '\r');
+            p('');  // Add 1 line after thinking
         }
     }, 400);
     return interval;
@@ -465,8 +468,8 @@ async function cmdChatStreaming(query) {
             p('\n');
             
             const tokens = Math.ceil(fullResponse.length / 4);
-            p(`\n${MGRAY}────────────────────────────────${R}`);
-    p(`${MGRAY}⚡  ${tokens} token${R}  ·  ${DGRAY}${config.model}${R}`);
+            p(`\n${PAD}${MGRAY}────────────────────────────────${R}`);
+    p(`${PAD}${MGRAY}⚡  ${tokens} token${R}  ·  ${DGRAY}${config.model}${R}`);
             
             session.push({ role: 'assistant', content: fullResponse });
             if (session.length > 40) {
@@ -808,8 +811,8 @@ async function cmdChat(query) {
                 saveSession(session);
                 
                 aiBubble(reply);
-                p(`\n${MGRAY}────────────────────────────────${R}`);
-                p(`${MGRAY}⚡ ${tokens} token${R} · ${DGRAY}${config.model}${R}`);
+                p(`\n${PAD}${MGRAY}────────────────────────────────${R}`);
+                p(`${PAD}${MGRAY}⚡  ${tokens} token${R}  ·  ${DGRAY}${config.model}${R}`);
                 
                 resolve();
             } catch (e) {
