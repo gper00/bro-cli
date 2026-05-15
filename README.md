@@ -33,6 +33,28 @@ bro --stats         # View usage stats
 echo "question" | bro  # Pipe support
 ```
 
+## Example
+
+```bash
+$ bro "apa itu linux?"
+
+  bro lagi mikir...
+
+  ────────────────────────────────
+
+  Linux adalah sistem operasi open-source yang pertama kali dikembangkan
+  oleh Linus Torvalds pada tahun 1991. Linux merupakan kernel yang menjadi
+  dasar berbagai distribusi Linux seperti Ubuntu, Debian, Fedora, dan lain-
+  lain.
+
+  ▸ Gratis dan terbuka
+  ▸ Stabil dan aman
+  ▸ Digunakan di server, smartphone, hingga supercomputer
+
+  ────────────────────────────────
+  ⚡  3456 token ·  llama-3.3-70b-versatile
+```
+
 ## Commands
 
 | Command | Description |
@@ -56,7 +78,7 @@ echo "question" | bro  # Pipe support
 
 ## Features
 
-- Typewriter animation
+- Typewriter animation (animasi perkata)
 - Streaming response
 - Session history
 - File operations
