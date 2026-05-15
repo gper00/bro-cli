@@ -12,8 +12,23 @@ const __dirname = path.dirname(__filename);
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'bro');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const SESSION_FILE = path.join(CONFIG_DIR, 'session.json');
-const DEFAULT_MODEL = 'google/gemini-2.5-flash';
+const DEFAULT_PROVIDER = 'groq';
 const DEFAULT_SYSTEM_PROMPT = 'Kamu adalah asisten AI yang helpful. Jawab dalam bahasa yang sama dengan user.';
+
+// Provider definitions
+const PROVIDERS = {
+    groq: {
+        name: 'Groq',
+        apiUrl: 'https://api.groq.com/openai/v1/chat/completions',
+        apiKeyEnv: 'GROQ_API_KEY',
+        models: [
+            { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', desc: 'Terbaik & terbaru' },
+            { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', desc: 'Cepat & ringan' },
+        ],
+        defaultModel: 'llama-3.3-70b-versatile'
+    },
+    
+};
 
 // Theme definitions
 const THEMES = {
@@ -92,7 +107,7 @@ function tw() {
 }
 
 function rpt(n, ch) {
-    return ch.repeat(n);
+    return n > 0 ? ch.repeat(n) : '';
 }
 
 function box(title, subtitle = '') {
@@ -117,7 +132,7 @@ function aiBubble(text) {
     
     const lines = parseMarkdown(text, maxC, true);
     
-    p(`\n${PAD}${TEAL}✦ Bro${R}\n`);
+    // No label, directly show response
     
     let inCode = false;
     let prevEmpty = true;
@@ -235,10 +250,10 @@ function showSpinner(pid) {
             process.stdout.write(`\r${PAD}${TEAL}bro lagi mikir${'.'.repeat(dots)}`);
         } else {
             clearInterval(interval);
-            process.stdout.write('\r' + ' '.repeat(20) + '\r');
-            p('');  // Add 1 line after thinking
+            process.stdout.write('\r' + ' '.repeat(25) + '\r');
+            p(`\n${PAD}${MGRAY}────────────────────────${R}\n`);
         }
-    }, 400);
+    }, 350);
     return interval;
 }
 
@@ -247,11 +262,13 @@ function ensureConfig() {
         fs.mkdirSync(CONFIG_DIR, { recursive: true });
     }
     if (!fs.existsSync(CONFIG_FILE)) {
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify({
-            model: DEFAULT_MODEL,
+        const defaultConfig = {
+            provider: DEFAULT_PROVIDER,
+            model: PROVIDERS[DEFAULT_PROVIDER].defaultModel,
             theme: 'light',
             systemPrompt: DEFAULT_SYSTEM_PROMPT
-        }, null, 2));
+        };
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
     }
     if (!fs.existsSync(SESSION_FILE)) {
         fs.writeFileSync(SESSION_FILE, JSON.stringify([], null, 2));
@@ -281,11 +298,12 @@ function saveSession(session) {
     fs.writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2));
 }
 
-function getApiKey() {
-    const key = process.env.OPENROUTER_API_KEY;
+function getApiKey(config) {
+    const provider = PROVIDERS[config.provider] || PROVIDERS.groq;
+    const key = process.env[provider.apiKeyEnv];
     if (!key) {
-        p(`\n  ${RED}${BOLD}✗${R}  OPENROUTER_API_KEY belum diset di .bashrc`);
-        p(`  ${DGRAY}Cara set:${R} echo 'export OPENROUTER_API_KEY="你的key"' >> ~/.bashrc`);
+        p(`\n  ${RED}${BOLD}✗${R}  ${provider.apiKeyEnv} belum diset di .bashrc`);
+        p(`  ${DGRAY}Cara set:${R} echo 'export ${provider.apiKeyEnv}="your-key"' >> ~/.bashrc`);
         p(`  ${DGRAY}Lalu:${R} source ~/.bashrc\n`);
         process.exit(1);
     }
@@ -296,7 +314,7 @@ async function checkOnline() {
     try {
         const { exec } = await import('child_process');
         return new Promise((resolve) => {
-            exec('curl -sf --max-time 5 https://openrouter.ai', (err) => {
+            exec('curl -sf --max-time 5 https://api.groq.com', (err) => {
                 resolve(!err);
             });
         });
@@ -335,6 +353,74 @@ function validateInput(input) {
         return trimmed.substring(0, 10000);
     }
     return trimmed;
+}
+
+function typeWriter(text) {
+    const delay = 4;
+    let i = 0;
+    let inBold = false;
+    let inItalic = false;
+    let inCode = false;
+    let lineStart = true;
+    
+    function type() {
+        if (i < text.length) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+            
+            if (char === '\n') {
+                lineStart = true;
+                process.stdout.write('\n');
+                if (nextChar === '\n') i++;
+            } else if (lineStart && char === '*' && nextChar === ' ') {
+                process.stdout.write(`${FOREST}▸ ${R}`);
+                i += 2;
+                lineStart = false;
+                return type();
+            } else if (lineStart && (char === '•' || char === '●')) {
+                process.stdout.write(`${FOREST}${char} ${R}`);
+                i++;
+                lineStart = false;
+            } else if (lineStart && char === '-') {
+                process.stdout.write(`${FOREST}• ${R}`);
+                i++;
+                lineStart = false;
+                return type();
+            } else if (char === '`') {
+                inCode = !inCode;
+                process.stdout.write(inCode ? DGRAY : R);
+            } else if (char === '*' && !inCode) {
+                if (nextChar === '*') {
+                    inBold = !inBold;
+                    i += 2;
+                    process.stdout.write(inBold ? TEAL : R);
+                    return type();
+                } else {
+                    inItalic = !inItalic;
+                    process.stdout.write(inItalic ? ITALIC : R);
+                }
+            } else {
+                process.stdout.write(char);
+                if (char !== ' ') lineStart = false;
+            }
+            
+            i++;
+            setTimeout(type, delay);
+        }
+    }
+    type();
+}
+
+function formatResponse(text) {
+    let formatted = text
+        .replace(/```(\w+)?\n([\s\S]*?)```/g, '\n▸ ```$1\n$2```\n')
+        .replace(/```([\s\S]*?)```/g, '\n▸ ```\n$1```\n')
+        .replace(/\*\*([^*]+)\*\*/g, `${TEAL}$1${R}`)
+        .replace(/\*([^*]+)\*/g, `${ITALIC}$1${R}`)
+        .replace(/`([^`]+)`/g, `${DGRAY}$1${R}`)
+        .replace(/^- (.+)$/gm, `${FOREST}•${R} $1`)
+        .replace(/^(\d+)\. (.+)$/gm, `${TEAL}$1.${R} $2`);
+    return formatted;
 }
 
 let currentCurl = null;
@@ -403,8 +489,9 @@ async function interactiveMode() {
 
 // Streaming response
 async function cmdChatStreaming(query) {
-    const apiKey = getApiKey();
     const config = loadConfig();
+    const provider = PROVIDERS[config.provider] || PROVIDERS.groq;
+    const apiKey = getApiKey(config);
     const session = loadSession();
     
     query = validateInput(query);
@@ -418,13 +505,15 @@ async function cmdChatStreaming(query) {
     }
     
     const { spawn } = await import('child_process');
-    const curl = spawn('curl', [
-        '-s', '--no-buffer', '--max-time', '60',
-        '-X', 'POST', 'https://openrouter.ai/api/v1/chat/completions',
+    const headers = [
         '-H', `Authorization: Bearer ${apiKey}`,
         '-H', 'Content-Type: application/json',
-        '-H', 'HTTP-Referer: https://localhost',
-        '-H', 'X-Title: Bro CLI',
+    ];
+    
+    const curl = spawn('curl', [
+        '-s', '--no-buffer', '--max-time', '60',
+        '-X', 'POST', provider.apiUrl,
+        ...headers,
         '-d', JSON.stringify({
             model: config.model,
             messages: session,
@@ -455,7 +544,7 @@ async function cmdChatStreaming(query) {
                     const content = parsed.choices?.[0]?.delta?.content;
                     if (content) {
                         fullResponse += content;
-                        process.stdout.write(`${INK}${content}${R}`);
+                        typeWriter(content);
                     }
                 } catch {}
             }
@@ -465,11 +554,11 @@ async function cmdChatStreaming(query) {
     return new Promise((resolve, reject) => {
         curl.on('close', (code) => {
             currentCurl = null;
-            p('\n');
+            p('');
             
             const tokens = Math.ceil(fullResponse.length / 4);
-            p(`\n${PAD}${MGRAY}────────────────────────────────${R}`);
-    p(`${PAD}${MGRAY}⚡  ${tokens} token${R}  ·  ${DGRAY}${config.model}${R}`);
+            p(`\n${PAD}${MGRAY}──┴─── ${tokens} token ─┴───${R}`);
+            p(`${PAD}${DGRAY}${config.model}${R}`);
             
             session.push({ role: 'assistant', content: fullResponse });
             if (session.length > 40) {
@@ -507,6 +596,7 @@ function showHelp() {
         ['--new,-n', 'Mulai percakapan baru (hapus konteks)'],
         ['--history,-y', 'Lihat riwayat percakapan'],
         ['--clear,-c', 'Hapus semua riwayat'],
+        ['--provider,-p', 'Ganti provider (hanya groq)'],
         ['--model,-m', 'Pilih/ganti model AI'],
         ['--read,-r', 'Baca file dan proses dengan AI'],
         ['--write,-w', 'Tulis ke file'],
@@ -556,7 +646,21 @@ function showModels() {
 }
 
 async function selectModel() {
-    showModels();
+    const config = loadConfig();
+    const provider = PROVIDERS[config.provider] || PROVIDERS.groq;
+    const models = provider.models;
+    
+    box("🤖  Pilih Model", config.model);
+    
+    models.forEach((m, i) => {
+        const marker = m.id === config.model ? `  ${FOREST}${BOLD}← aktif${R}` : '';
+        p(`  ${TEAL}${BOLD}${i + 1}.${R}  ${m.id}`);
+        p(`     ${DGRAY}${m.name} - ${m.desc}${marker}`);
+        p();
+    });
+    
+    p(`  ${DGRAY}Pilih nomor (1-${models.length}):${R}`);
+    
     const readline = await import('readline').then(m => m.createInterface({
         input: process.stdin,
         output: process.stdout
@@ -566,11 +670,50 @@ async function selectModel() {
         readline.question('', async (answer) => {
             readline.close();
             const idx = parseInt(answer) - 1;
-            if (idx >= 0 && idx < MODELS.length) {
+            if (idx >= 0 && idx < models.length) {
                 const config = loadConfig();
-                config.model = MODELS[idx].id;
+                config.model = models[idx].id;
                 saveConfig(config);
-                p(`\n  ${FOREST}${BOLD}✓${R} Model diubah ke: ${MODELS[idx].name}\n`);
+                p(`\n  ${FOREST}${BOLD}✓${R} Model diubah ke: ${models[idx].name}\n`);
+            } else {
+                p(`\n  ${DGRAY}Dibatalkan.${R}\n`);
+            }
+        });
+    });
+}
+
+async function selectProvider() {
+    const config = loadConfig();
+    box("🌐  Pilih Provider", config.provider);
+    
+    const providerKeys = Object.keys(PROVIDERS);
+    providerKeys.forEach((key, i) => {
+        const prov = PROVIDERS[key];
+        const marker = key === config.provider ? `  ${FOREST}${BOLD}← aktif${R}` : '';
+        p(`  ${TEAL}${BOLD}${i + 1}.${R}  ${prov.name}${marker}`);
+        p(`     ${DGRAY}${prov.models.length} models available${R}`);
+        p();
+    });
+    
+    p(`  ${DGRAY}Pilih nomor (1-${providerKeys.length}):${R}`);
+    
+    const readline = await import('readline').then(m => m.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    }));
+    
+    return new Promise(resolve => {
+        readline.question('', async (answer) => {
+            readline.close();
+            const keys = Object.keys(PROVIDERS);
+            const idx = parseInt(answer) - 1;
+            if (idx >= 0 && idx < keys.length) {
+                const config = loadConfig();
+                config.provider = keys[idx];
+                config.model = PROVIDERS[keys[idx]].defaultModel;
+                saveConfig(config);
+                p(`\n  ${FOREST}${BOLD}✓${R} Provider diubah ke: ${PROVIDERS[keys[idx]].name}\n`);
+                p(`  ${DGRAY}Model default: ${config.model}${R}\n`);
             } else {
                 p(`\n  ${DGRAY}Dibatalkan.${R}\n`);
             }
@@ -741,8 +884,9 @@ function cmdTheme(newTheme) {
 }
 
 async function cmdChat(query) {
-    const apiKey = getApiKey();
     const config = loadConfig();
+    const provider = PROVIDERS[config.provider] || PROVIDERS.groq;
+    const apiKey = getApiKey(config);
     const session = loadSession();
     
     query = validateInput(query);
@@ -751,13 +895,15 @@ async function cmdChat(query) {
     // Skip user bubble display - just show loading
     
     const { spawn } = await import('child_process');
-    const curl = spawn('curl', [
-        '-sf', '--max-time', '60',
-        '-X', 'POST', 'https://openrouter.ai/api/v1/chat/completions',
+    const headers = [
         '-H', `Authorization: Bearer ${apiKey}`,
         '-H', 'Content-Type: application/json',
-        '-H', 'HTTP-Referer: https://localhost',
-        '-H', 'X-Title: Bro CLI',
+    ];
+    
+    const curl = spawn('curl', [
+        '-sf', '--max-time', '60',
+        '-X', 'POST', provider.apiUrl,
+        ...headers,
         '-d', JSON.stringify({
             model: config.model,
             messages: session,
@@ -779,6 +925,9 @@ async function cmdChat(query) {
             clearInterval(spinnerInt);
             currentCurl = null;
             
+            // Print horizontal line after loading
+            p(`\n${PAD}${MGRAY}────────────────────────────────${R}`);
+            
             if (code !== 0) {
                 // Parse curl error
                 if (errorData.includes('could not resolve host') || errorData.includes('Name or service not known')) {
@@ -786,7 +935,7 @@ async function cmdChat(query) {
                 } else if (errorData.includes('timed out')) {
                     showError('Timeout', 'Request terlalu lama.', ERROR_HELP['TIMEOUT']);
                 } else {
-                    showError('Network Error', 'Gagal konek ke OpenRouter.', ERROR_HELP['NETWORK']);
+                    showError('Network Error', 'Gagal konek ke server.', ERROR_HELP['NETWORK']);
                 }
                 process.exit(1);
             }
@@ -810,6 +959,7 @@ async function cmdChat(query) {
                 }
                 saveSession(session);
                 
+                p('');  // Spacing before response
                 aiBubble(reply);
                 p(`\n${PAD}${MGRAY}────────────────────────────────${R}`);
                 p(`${PAD}${MGRAY}⚡  ${tokens} token${R}  ·  ${DGRAY}${config.model}${R}`);
@@ -827,7 +977,6 @@ async function cmdChat(query) {
 async function main() {
     setupSignalHandler();
     ensureConfig();
-    getApiKey();
     
     // Check for pipe input early
     const pipeInput = await checkPipeInput();
@@ -835,6 +984,8 @@ async function main() {
     
     // If no args but have pipe input, use it as query
     if (pipeInput && !hasArgs) {
+        const config = loadConfig();
+        getApiKey(config);
         await cmdChat(pipeInput);
         return;
     }
@@ -849,6 +1000,11 @@ async function main() {
         case '--help':
         case '-h':
             showHelp();
+            break;
+            
+        case '--provider':
+        case '-p':
+            await selectProvider();
             break;
             
         case '--model':

@@ -1,6 +1,6 @@
 # Bro CLI
 
-Personal AI assistant for your terminal. Free, instant, and easy to use.
+Personal AI assistant for your terminal.
 
 ## Install
 
@@ -15,9 +15,11 @@ source ~/.bashrc
 ## Setup
 
 ```bash
-# Get free API key at https://openrouter.ai
-echo 'export OPENROUTER_API_KEY="sk-or-v1-xxxxx"' >> ~/.bashrc
+# Groq (default - faster)
+echo 'export GROQ_API_KEY="gsk_xxxxx"' >> ~/.bashrc
 source ~/.bashrc
+
+# Get free key: https://console.groq.com
 ```
 
 ## Usage
@@ -26,42 +28,46 @@ source ~/.bashrc
 bro "hello"
 
 bro -m              # Select model
-bro -r file.txt     # Read & process file
 bro --stats         # View usage stats
 
 echo "question" | bro  # Pipe support
-bro --stream        # Streaming response
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `bro "text"` | Regular chat |
-| `-m` | Change model |
+| `-m, --model` | Switch model |
 | `-n` | New chat |
 | `-y` | View history |
 | `-c` | Clear history |
 | `-r <file>` | Read file |
 | `-w <file> <content>` | Write file |
+| `-t, --theme` | Light/dark |
 | `--config` | Show config |
-| `--theme light/dark` | Change theme |
 | `--stats` | Usage stats |
-| `--export <file>` | Export chat |
-| `--import <file>` | Import chat |
 | `--help` | Help |
 
-## Available Models
+## Models
 
-- google/gemini-2.5-flash
-- meta-llama/llama-3.3-70b-instruct
-- deepseek/deepseek-chat
-- qwen/qwen-2.5-72b-instruct
-- openai/gpt-4o
-- mistralai/mixtral-8x7b-instruct
+**Groq:**
+- llama-3.3-70b-versatile (default)
+- llama-3.1-8b-instant
+
+## Features
+
+- Typewriter animation
+- Streaming response
+- Session history
+- File operations
+- Pipe support
 
 ## Uninstall
 
 ```bash
 rm ~/.local/bin/bro ~/.config/bro -rf
 ```
+
+## License
+
+MIT
